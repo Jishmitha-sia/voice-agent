@@ -97,6 +97,23 @@ h2 {
   font-weight: 700;
 }
 
+.status.connected {
+  border-color: rgba(23, 111, 107, 0.45);
+  background: #e4f4ee;
+}
+
+.status.connecting {
+  border-color: rgba(182, 95, 45, 0.4);
+  background: #fff3ea;
+  color: var(--accent-2);
+}
+
+.status.error {
+  border-color: rgba(180, 54, 54, 0.4);
+  background: #fff0f0;
+  color: #a33a3a;
+}
+
 .transcript {
   flex: 1;
   display: grid;
@@ -129,10 +146,19 @@ h2 {
   background: #f8fbfb;
 }
 
+.system {
+  background: #f5f7fb;
+}
+
 .customer {
   justify-self: end;
   background: #fff9f5;
   border-color: #ead6c8;
+}
+
+.error {
+  background: #fff5f5;
+  border-color: #efc7c7;
 }
 
 .controls {
@@ -143,7 +169,8 @@ h2 {
 }
 
 .primary,
-.secondary {
+.secondary,
+.danger {
   min-height: 42px;
   border-radius: 8px;
   padding: 0 16px;
@@ -160,10 +187,25 @@ h2 {
   font-weight: 700;
 }
 
+.primary:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .secondary {
   border: 1px solid var(--line);
   background: white;
   color: var(--ink);
+}
+
+.danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: #a33a3a;
+  color: white;
+  font-weight: 700;
 }
 
 .side {
@@ -211,7 +253,8 @@ h2 {
   }
 
   .primary,
-  .secondary {
+  .secondary,
+  .danger {
     justify-content: center;
     width: 100%;
   }

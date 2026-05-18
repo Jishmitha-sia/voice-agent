@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
 
     livekit_url: str = "ws://localhost:7880"
+    livekit_client_url: str = "ws://localhost:7880"
     livekit_api_key: str = "devkey"
     livekit_api_secret: str = "secret"
 
@@ -18,7 +19,11 @@ class Settings(BaseSettings):
     stt_provider: str = "faster-whisper"
     tts_provider: str = "piper"
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=("../.env", ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     @property
     def cors_origin_list(self) -> list[str]:

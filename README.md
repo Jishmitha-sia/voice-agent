@@ -28,6 +28,13 @@ Build a browser-based support voice agent before adding telephony:
 6. Conversation memory and transcript storage.
 7. RAG over support documents.
 
+## Current Capabilities
+
+- FastAPI health and public config endpoints
+- Local infrastructure with PostgreSQL, Redis, ChromaDB, and LiveKit
+- Browser voice console shell
+- LiveKit token endpoint and browser microphone room connection
+
 ## Development
 
 Copy the environment template:
@@ -59,3 +66,5 @@ cd frontend
 npm install
 npm run dev
 ```
+
+Open `http://localhost:3000` and click **Start test call**. Your browser should ask for microphone permission and connect to the local LiveKit room.
