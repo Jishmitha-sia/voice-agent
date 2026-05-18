@@ -70,3 +70,5 @@ npm run dev
 Open `http://localhost:3000` and click **Start test call**. Your browser should ask for microphone permission and connect to the local LiveKit room.
 
 If the UI shows `could not establish pc connection`, check that Docker Desktop is running, Windows Firewall allows Docker/LiveKit network traffic, and the backend token response uses `ws://127.0.0.1:7880` for the LiveKit client URL.
+
+The local Docker LiveKit server uses [docker/livekit.yaml](docker/livekit.yaml), which pins the advertised RTC node IP to `127.0.0.1` for browser testing on the same machine.
