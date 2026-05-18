@@ -1,2 +1,0 @@
-livekit-agents[silero,turn-detector]~=1.4
-python-dotenv
