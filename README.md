@@ -34,6 +34,7 @@ Build a browser-based support voice agent before adding telephony:
 - Local infrastructure with PostgreSQL, Redis, ChromaDB, and LiveKit
 - Browser voice console shell
 - LiveKit token endpoint and browser microphone room connection
+- Text chat endpoint backed by a configurable customer support LLM provider
 
 ## Development
 
@@ -57,6 +58,13 @@ python -m venv .venv
 .venv/Scripts/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
+```
+
+Run the local LLM provider:
+
+```bash
+ollama pull qwen3:8b
+ollama serve
 ```
 
 Run frontend:

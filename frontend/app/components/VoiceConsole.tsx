@@ -1,7 +1,8 @@
 "use client";
 
+import type { FormEvent } from "react";
 import { useMemo, useRef, useState } from "react";
-import { Activity, Database, Mic, PhoneCall, Radio, ShieldCheck, Square } from "lucide-react";
+import { Activity, Database, Mic, PhoneCall, Radio, Send, ShieldCheck, Square } from "lucide-react";
 import { Room, RoomEvent } from "livekit-client";
 
 type ConnectionState = "idle" | "connecting" | "connected" | "error";
@@ -11,6 +12,17 @@ type TokenResponse = {
   url: string;
   room_name: string;
   participant_name: string;
+};
+
+type TranscriptMessage = {
+  id: string;
+  role: "system" | "customer" | "agent";
+  content: string;
+};
+
+type ConversationResponse = {
+  session_id: string;
+  reply: string;
 };
 
 const capabilities = [
@@ -30,6 +42,16 @@ export default function VoiceConsole() {
   const [roomName, setRoomName] = useState<string | null>(null);
   const [participantName, setParticipantName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [draftMessage, setDraftMessage] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [messages, setMessages] = useState<TranscriptMessage[]>([
+    {
+      id: "system-intro",
+      role: "system",
+      content: "Start a test call to join a local LiveKit room, or send a text message to test the support agent brain.",
+    },
+  ]);
 
   const statusLabel = useMemo(() => {
     if (connectionState === "connecting") return "Connecting";
@@ -83,6 +105,52 @@ export default function VoiceConsole() {
     setConnectionState("idle");
   }
 
+  async function sendMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmedMessage = draftMessage.trim();
+    if (!trimmedMessage || isSending) return;
+
+    const customerMessage: TranscriptMessage = {
+      id: crypto.randomUUID(),
+      role: "customer",
+      content: trimmedMessage,
+    };
+
+    setMessages((currentMessages) => [...currentMessages, customerMessage]);
+    setDraftMessage("");
+    setIsSending(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/conversations/message`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId, message: trimmedMessage }),
+      });
+
+      if (!response.ok) {
+        const errorData = (await response.json().catch(() => null)) as { detail?: string } | null;
+        throw new Error(errorData?.detail ?? `Agent request failed with ${response.status}`);
+      }
+
+      const data = (await response.json()) as ConversationResponse;
+      setSessionId(data.session_id);
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        {
+          id: crypto.randomUUID(),
+          role: "agent",
+          content: data.reply,
+        },
+      ]);
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : "Could not send the message.";
+      setError(message);
+    } finally {
+      setIsSending(false);
+    }
+  }
+
   const isConnected = connectionState === "connected";
   const isConnecting = connectionState === "connecting";
 
@@ -104,17 +172,21 @@ export default function VoiceConsole() {
               <p>
                 {isConnected
                   ? `Connected to ${roomName} as ${participantName}. Your microphone is publishing to LiveKit.`
-                  : "Start a test call to join a local LiveKit room and publish your microphone."}
+                  : "The voice room is idle. Text chat is available for testing dynamic agent replies."}
               </p>
             </div>
-            <div className="message customer">
-              <span>Customer</span>
-              <p>I need help with a billing issue.</p>
-            </div>
-            <div className="message agent">
-              <span>Agent</span>
-              <p>I can help with that. I will check the account, review the billing policy, and create a ticket if needed.</p>
-            </div>
+            {messages.map((message) => (
+              <div className={`message ${message.role}`} key={message.id}>
+                <span>{message.role === "customer" ? "Customer" : message.role === "agent" ? "Agent" : "System"}</span>
+                <p>{message.content}</p>
+              </div>
+            ))}
+            {isSending ? (
+              <div className="message agent">
+                <span>Agent</span>
+                <p>Thinking...</p>
+              </div>
+            ) : null}
             {error ? (
               <div className="message error">
                 <span>Error</span>
@@ -122,6 +194,19 @@ export default function VoiceConsole() {
               </div>
             ) : null}
           </div>
+
+          <form className="composer" onSubmit={sendMessage}>
+            <input
+              aria-label="Customer message"
+              onChange={(event) => setDraftMessage(event.target.value)}
+              placeholder="Ask about a refund, account issue, order status..."
+              type="text"
+              value={draftMessage}
+            />
+            <button className="iconButton" type="submit" disabled={isSending || !draftMessage.trim()}>
+              <Send size={18} />
+            </button>
+          </form>
 
           <div className="controls">
             {isConnected ? (

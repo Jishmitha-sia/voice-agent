@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     redis_url: str = "redis://localhost:6379/0"
     llm_provider: str = "ollama"
+    ollama_base_url: str = "http://localhost:11434"
     llm_model: str = "qwen3:8b"
     stt_provider: str = "faster-whisper"
     tts_provider: str = "piper"

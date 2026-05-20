@@ -29,6 +29,10 @@ button {
   font: inherit;
 }
 
+input {
+  font: inherit;
+}
+
 .shell {
   min-height: 100vh;
   padding: 32px;
@@ -168,9 +172,32 @@ h2 {
   border-top: 1px solid var(--line);
 }
 
+.composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 10px;
+  padding: 16px 24px 0;
+  border-top: 1px solid var(--line);
+}
+
+.composer input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 14px;
+  color: var(--ink);
+}
+
+.composer input:focus {
+  border-color: rgba(23, 111, 107, 0.55);
+  outline: 3px solid rgba(23, 111, 107, 0.12);
+}
+
 .primary,
 .secondary,
-.danger {
+.danger,
+.iconButton {
   min-height: 42px;
   border-radius: 8px;
   padding: 0 16px;
@@ -206,6 +233,21 @@ h2 {
   background: #a33a3a;
   color: white;
   font-weight: 700;
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: var(--accent);
+  color: white;
+  padding: 0;
+}
+
+.iconButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .side {
