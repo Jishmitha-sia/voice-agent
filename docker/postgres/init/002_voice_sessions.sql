@@ -1,13 +1,3 @@
-from asyncpg import Pool, create_pool
-
-from app.core.config import Settings
-
-
-def build_database_url(settings: Settings) -> str:
-    return settings.database_url
-
-
-VOICE_SESSIONS_SCHEMA = """
 CREATE TABLE IF NOT EXISTS voice_sessions (
     id UUID PRIMARY KEY,
     room_name TEXT NOT NULL UNIQUE,
@@ -22,13 +12,3 @@ CREATE TABLE IF NOT EXISTS voice_sessions (
 
 CREATE INDEX IF NOT EXISTS idx_voice_sessions_status ON voice_sessions(status);
 CREATE INDEX IF NOT EXISTS idx_voice_sessions_created_at ON voice_sessions(created_at DESC);
-"""
-
-
-async def create_database_pool(settings: Settings) -> Pool:
-    return await create_pool(dsn=build_database_url(settings), min_size=1, max_size=5)
-
-
-async def init_database(pool: Pool) -> None:
-    async with pool.acquire() as connection:
-        await connection.execute(VOICE_SESSIONS_SCHEMA)

@@ -1,10 +1,12 @@
 import { apiBaseUrl } from "./api";
 
 export type LiveKitTokenResponse = {
+  session_id: string;
   token: string;
   url: string;
   room_name: string;
   participant_name: string;
+  status: string;
 };
 
 export async function createLiveKitToken(): Promise<LiveKitTokenResponse> {

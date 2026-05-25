@@ -223,6 +223,41 @@ h2 {
   padding: 20px;
 }
 
+.sideHeading {
+  margin-top: 22px;
+}
+
+.sessionMeta {
+  display: grid;
+  gap: 10px;
+}
+
+.sessionMeta div {
+  display: grid;
+  gap: 4px;
+  min-height: 54px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.sessionMeta span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sessionMeta strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sessionMeta .good {
+  color: var(--accent);
+}
+
 .capabilityGrid {
   display: grid;
   gap: 10px;
@@ -242,6 +277,10 @@ h2 {
 .capability svg {
   color: var(--accent-2);
   flex: 0 0 auto;
+}
+
+.realtimeNote {
+  margin-top: 10px;
 }
 
 @media (max-width: 840px) {

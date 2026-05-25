@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Activity, Database, Mic, PhoneCall, Radio, ShieldCheck, Square } from "lucide-react";
-import { Room, RoomEvent } from "livekit-client";
+import { Activity, Database, Mic, PhoneCall, Radio, ShieldCheck, Square, Wifi } from "lucide-react";
+import { LocalTrackPublication, Room, RoomEvent } from "livekit-client";
 
 import { createLiveKitToken } from "@/lib/livekit";
+import { wsBaseUrl } from "@/lib/api";
 import { useVoiceStore } from "@/stores/voice-store";
 
 type TranscriptMessage = {
@@ -24,13 +25,30 @@ const capabilities = [
 
 export default function VoiceConsole() {
   const roomRef = useRef<Room | null>(null);
-  const { connectionState, error, participantName, roomName, setConnectionState, setError, setRoomDetails } =
-    useVoiceStore();
+  const websocketRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
+  const shouldReconnectRef = useRef(false);
+  const {
+    connectionState,
+    error,
+    micEnabled,
+    participantName,
+    realtimeState,
+    roomName,
+    sessionId,
+    setConnectionState,
+    setError,
+    setMicEnabled,
+    setRealtimeState,
+    setRoomDetails,
+    setSessionId,
+    setStartedAt,
+  } = useVoiceStore();
   const [messages, setMessages] = useState<TranscriptMessage[]>([
     {
       id: "system-intro",
       role: "system",
-      content: "Phase 1 foundation is active. Start a test call to join a local LiveKit room and publish your microphone.",
+      content: "Phase 2 is active. Start a test call to create a tracked browser voice session.",
     },
   ]);
 
@@ -41,6 +59,84 @@ export default function VoiceConsole() {
     return "Ready";
   }, [connectionState]);
 
+  function appendSystemMessage(content: string) {
+    setMessages((currentMessages) => [
+      ...currentMessages,
+      {
+        id: crypto.randomUUID(),
+        role: "system",
+        content,
+      },
+    ]);
+  }
+
+  function closeRealtimeSocket() {
+    shouldReconnectRef.current = false;
+    if (reconnectTimeoutRef.current) {
+      window.clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    websocketRef.current?.close();
+    websocketRef.current = null;
+    setRealtimeState("idle");
+  }
+
+  function sendRealtimeEvent(type: string, payload: Record<string, unknown> = {}, attempts = 5) {
+    const socket = websocketRef.current;
+    if (!socket) return;
+
+    if (socket.readyState !== WebSocket.OPEN) {
+      if (attempts > 0) {
+        window.setTimeout(() => sendRealtimeEvent(type, payload, attempts - 1), 250);
+      }
+      return;
+    }
+
+    socket.send(JSON.stringify({ type, ...payload }));
+  }
+
+  function connectRealtimeSocket(nextSessionId: string) {
+    shouldReconnectRef.current = true;
+    setRealtimeState(websocketRef.current ? "reconnecting" : "connecting");
+
+    const socket = new WebSocket(`${wsBaseUrl}/api/realtime/ws/${nextSessionId}`);
+    websocketRef.current = socket;
+
+    socket.onopen = () => {
+      setRealtimeState("connected");
+      sendRealtimeEvent("ping");
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data) as { type?: string; session?: { status?: string } };
+        if (data.type === "session.connected") {
+          appendSystemMessage("Realtime session socket connected.");
+        }
+        if (data.type === "session.updated" && data.session?.status) {
+          appendSystemMessage(`Session status updated: ${data.session.status}.`);
+        }
+      } catch {
+        appendSystemMessage("Received an unreadable realtime event.");
+      }
+    };
+
+    socket.onerror = () => {
+      setRealtimeState("error");
+    };
+
+    socket.onclose = () => {
+      websocketRef.current = null;
+      if (!shouldReconnectRef.current) {
+        setRealtimeState("disconnected");
+        return;
+      }
+
+      setRealtimeState("reconnecting");
+      reconnectTimeoutRef.current = window.setTimeout(() => connectRealtimeSocket(nextSessionId), 1500);
+    };
+  }
+
   async function startCall() {
     setConnectionState("connecting");
     setError(null);
@@ -48,41 +144,51 @@ export default function VoiceConsole() {
     try {
       const tokenData = await createLiveKitToken();
       const room = new Room({ adaptiveStream: true, dynacast: true });
+      setSessionId(tokenData.session_id);
+      setStartedAt(new Date().toISOString());
+      connectRealtimeSocket(tokenData.session_id);
 
       room.on(RoomEvent.Disconnected, () => {
         setConnectionState("idle");
         setRoomDetails(null, null);
+        setMicEnabled(false);
         roomRef.current = null;
+      });
+
+      room.on(RoomEvent.LocalTrackPublished, (publication: LocalTrackPublication) => {
+        if (publication.kind === "audio") {
+          setMicEnabled(true);
+        }
       });
 
       await room.connect(tokenData.url, tokenData.token);
       await room.localParticipant.setMicrophoneEnabled(true);
+      sendRealtimeEvent("voice.active", { room_name: tokenData.room_name });
 
       roomRef.current = room;
       setRoomDetails(tokenData.room_name, tokenData.participant_name);
       setConnectionState("connected");
-      setMessages((currentMessages) => [
-        ...currentMessages,
-        {
-          id: crypto.randomUUID(),
-          role: "system",
-          content: `Connected to ${tokenData.room_name} as ${tokenData.participant_name}.`,
-        },
-      ]);
+      appendSystemMessage(`Connected to ${tokenData.room_name} as ${tokenData.participant_name}.`);
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "Could not start the test call.";
       setError(message);
       setConnectionState("error");
+      setMicEnabled(false);
       roomRef.current?.disconnect();
       roomRef.current = null;
+      closeRealtimeSocket();
     }
   }
 
   function stopCall() {
+    sendRealtimeEvent("voice.ended");
     roomRef.current?.disconnect();
     roomRef.current = null;
+    closeRealtimeSocket();
     setConnectionState("idle");
     setRoomDetails(null, null);
+    setMicEnabled(false);
+    appendSystemMessage("Voice session ended.");
   }
 
   const isConnected = connectionState === "connected";
@@ -106,7 +212,7 @@ export default function VoiceConsole() {
               <p>
                 {isConnected
                   ? `Connected to ${roomName} as ${participantName}. Your microphone is publishing to LiveKit.`
-                  : "The voice room is idle. Phase 1 only verifies app structure, tokens, WebSocket foundation, and browser audio publishing."}
+                  : "The voice room is idle. Phase 2 tracks browser voice sessions and realtime lifecycle events."}
               </p>
             </div>
             {messages.map((message) => (
@@ -142,7 +248,27 @@ export default function VoiceConsole() {
         </div>
 
         <aside className="panel side">
-          <h2>Build Targets</h2>
+          <h2>Session State</h2>
+          <div className="sessionMeta">
+            <div>
+              <span>Session</span>
+              <strong>{sessionId ? sessionId.slice(0, 8) : "none"}</strong>
+            </div>
+            <div>
+              <span>Room</span>
+              <strong>{roomName ?? "idle"}</strong>
+            </div>
+            <div>
+              <span>Mic</span>
+              <strong className={micEnabled ? "good" : ""}>{micEnabled ? "publishing" : "off"}</strong>
+            </div>
+            <div>
+              <span>Realtime</span>
+              <strong className={realtimeState === "connected" ? "good" : ""}>{realtimeState}</strong>
+            </div>
+          </div>
+
+          <h2 className="sideHeading">Build Targets</h2>
           <div className="capabilityGrid">
             {capabilities.map((item) => (
               <div className="capability" key={item.label}>
@@ -150,6 +276,10 @@ export default function VoiceConsole() {
                 <span>{item.label}</span>
               </div>
             ))}
+          </div>
+          <div className="capability realtimeNote">
+            <Wifi size={18} />
+            <span>WebSocket lifecycle</span>
           </div>
         </aside>
       </section>
