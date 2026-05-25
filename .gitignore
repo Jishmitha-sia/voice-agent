@@ -17,6 +17,7 @@ dist/
 coverage/
 
 docs/
+projectstate.md
 
 *.log
 .DS_Store
