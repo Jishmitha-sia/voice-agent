@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TouchGrass Voice Agent",
+  title: "Voice Agent",
   description: "Customer support voice agent console",
 };
 

@@ -1,82 +1,118 @@
-# TouchGrass Voice Agent
+# Voice Agent
 
-Open-source customer support voice agent platform built for realtime conversations, dynamic reasoning, retrieval, tool use, memory, and future phone support.
+Production-style browser-based AI customer support voice platform built with a simple modular monolith architecture.
 
-## Target Stack
+## Phase 1 Scope
 
-- **Frontend:** Next.js + React
-- **Backend:** FastAPI
-- **Realtime audio:** LiveKit
-- **Voice orchestration:** Pipecat
-- **STT:** Faster-Whisper
-- **LLM serving:** Ollama for local development, vLLM for production
-- **TTS:** Piper/Kokoro for MVP, XTTS-v2 as an upgrade path
-- **Agent workflows:** LangGraph
-- **Knowledge base:** ChromaDB + LlamaIndex
-- **Memory:** Redis + PostgreSQL
-- **Monitoring:** Langfuse later
+This phase is only the foundation:
 
-## First Milestone
+- Next.js frontend shell
+- FastAPI backend shell
+- Docker Compose infrastructure
+- PostgreSQL with pgvector
+- Redis
+- LiveKit local development server
+- LiveKit browser token endpoint
+- Basic realtime WebSocket endpoint
+- Authentication foundation placeholders
+- `projectstate.md` as the source of truth
 
-Build a browser-based support voice agent before adding telephony:
+Future phases will add Pipecat, Faster-Whisper, Ollama/qwen3:8b, Piper TTS, memory, RAG, tool calling, analytics, and deployment hardening.
 
-1. Next.js support console.
-2. FastAPI backend health/config endpoints.
-3. LiveKit room/token flow.
-4. Pipecat voice pipeline skeleton.
-5. STT -> LLM -> TTS loop.
-6. Conversation memory and transcript storage.
-7. RAG over support documents.
+## Architecture
 
-## Current Capabilities
+```text
+frontend/ Next.js app
+    |
+    | HTTP + WebSocket
+    v
+backend/ FastAPI modular monolith
+    |
+    | tokens/config/status
+    v
+LiveKit local server
 
-- FastAPI health and public config endpoints
-- Local infrastructure with PostgreSQL, Redis, ChromaDB, and LiveKit
-- Browser voice console shell
-- LiveKit token endpoint and browser microphone room connection
-- Text chat endpoint backed by a configurable customer support LLM provider
+Data:
+PostgreSQL + pgvector
+Redis
+```
 
-## Development
+## Folder Structure
 
-Copy the environment template:
+```text
+voice-agent/
+  backend/
+    app/
+      api/
+      core/
+      modules/
+        auth/
+        livekit/
+        realtime/
+        system/
+  frontend/
+    app/
+    components/
+    lib/
+    stores/
+  docker/
+    livekit.yaml
+    postgres/
+  docs/
+  projectstate.md
+```
 
-```bash
-cp .env.example .env
+## Setup
+
+Copy environment variables:
+
+```powershell
+Copy-Item .env.example .env
 ```
 
 Start infrastructure:
 
-```bash
-docker compose up -d postgres redis chroma livekit
+```powershell
+docker compose up -d
 ```
 
 Run backend:
 
-```bash
+```powershell
 cd backend
 python -m venv .venv
-.venv/Scripts/activate
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Run the local LLM provider:
-
-```bash
-ollama pull qwen3:8b
-ollama serve
-```
-
 Run frontend:
 
-```bash
+```powershell
 cd frontend
 npm install
 npm run dev
 ```
 
-Open `http://localhost:3000` and click **Start test call**. Your browser should ask for microphone permission and connect to the local LiveKit room.
+Open:
 
-If the UI shows `could not establish pc connection`, check that Docker Desktop is running, Windows Firewall allows Docker/LiveKit network traffic, and the backend token response uses `ws://127.0.0.1:7880` for the LiveKit client URL.
+```text
+http://localhost:3000
+```
 
-The local Docker LiveKit server uses [docker/livekit.yaml](docker/livekit.yaml), which pins the advertised RTC node IP to `127.0.0.1` for browser testing on the same machine.
+## Phase 1 Test Checklist
+
+- `http://localhost:8000/health` returns `ok`.
+- `http://localhost:8000/api/config` returns public app config.
+- `POST http://localhost:8000/api/livekit/token` returns a token.
+- Frontend loads at `http://localhost:3000`.
+- **Start test call** connects the browser to LiveKit and publishes microphone audio.
+- **End test call** disconnects cleanly.
+
+## Development Rules
+
+- Read `projectstate.md` before making decisions.
+- Update `projectstate.md` after major tasks or phase changes.
+- Commit after automated checks.
+- Push only after manual verification.
+- Keep the architecture simple and modular.

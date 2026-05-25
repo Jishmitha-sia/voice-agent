@@ -16,6 +16,8 @@ out/
 dist/
 coverage/
 
+docs/
+
 *.log
 .DS_Store
 Thumbs.db
